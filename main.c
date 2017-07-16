@@ -7,7 +7,7 @@ uint32_t decodeUint32(uint8_t head[4])
 	return x;
 }
 
-uint32_t decodeUint32_2(uint8_t head[4])
+uint32_t decodeUint32_2(uint8_t head[4])   //倒序 
 {
 	uint32_t x;
 	x = head[3]*256*256*256 + head[2]*256*256 + head[1]*256 + head[0];
@@ -49,57 +49,6 @@ int bs_read( bs_t *s, int i_count )
                                   0x1fffff,  0x3fffff,  0x7fffff,  0xffffff,  
                                   0x1ffffff, 0x3ffffff, 0x7ffffff, 0xfffffff,  
                                   0x1fffffff,0x3fffffff,0x7fffffff,0xffffffff};  
-    /* 
-              数组中的元素用二进制表示如下： 
- 
-              假设：初始为0，已写入为+，已读取为- 
-               
-              字节:       1       2       3       4 
-                   00000000 00000000 00000000 00000000      下标 
- 
-              0x00:                           00000000      x[0] 
- 
-              0x01:                           00000001      x[1] 
-              0x03:                           00000011      x[2] 
-              0x07:                           00000111      x[3] 
-              0x0f:                           00001111      x[4] 
- 
-              0x1f:                           00011111      x[5] 
-              0x3f:                           00111111      x[6] 
-              0x7f:                           01111111      x[7] 
-              0xff:                           11111111      x[8]    1字节 
- 
-             0x1ff:                      0001 11111111      x[9] 
-             0x3ff:                      0011 11111111      x[10]   i_mask[s->i_left] 
-             0x7ff:                      0111 11111111      x[11] 
-             0xfff:                      1111 11111111      x[12]   1.5字节 
- 
-            0x1fff:                  00011111 11111111      x[13] 
-            0x3fff:                  00111111 11111111      x[14] 
-            0x7fff:                  01111111 11111111      x[15] 
-            0xffff:                  11111111 11111111      x[16]   2字节 
- 
-           0x1ffff:             0001 11111111 11111111      x[17] 
-           0x3ffff:             0011 11111111 11111111      x[18] 
-           0x7ffff:             0111 11111111 11111111      x[19] 
-           0xfffff:             1111 11111111 11111111      x[20]   2.5字节 
- 
-          0x1fffff:         00011111 11111111 11111111      x[21] 
-          0x3fffff:         00111111 11111111 11111111      x[22] 
-          0x7fffff:         01111111 11111111 11111111      x[23] 
-          0xffffff:         11111111 11111111 11111111      x[24]   3字节 
- 
-         0x1ffffff:    0001 11111111 11111111 11111111      x[25] 
-         0x3ffffff:    0011 11111111 11111111 11111111      x[26] 
-         0x7ffffff:    0111 11111111 11111111 11111111      x[27] 
-         0xfffffff:    1111 11111111 11111111 11111111      x[28]   3.5字节 
- 
-        0x1fffffff:00011111 11111111 11111111 11111111      x[29] 
-        0x3fffffff:00111111 11111111 11111111 11111111      x[30] 
-        0x7fffffff:01111111 11111111 11111111 11111111      x[31] 
-        0xffffffff:11111111 11111111 11111111 11111111      x[32]   4字节 
- 
-     */  
     int      i_shr;             //  
     int i_result = 0;           //用来存放读取到的的结果 typedef unsigned   uint32_t;  
   
@@ -175,12 +124,10 @@ int bs_read1( bs_t *s )
 int bs_read_ue( bs_t *s )  
 {  
     int i = 0;  
+    
+    //条件为：读到的当前比特=0，指针未越界，最多只能读32比特  
+    for(i=0;bs_read1( s ) == 0 && s->p < s->p_end && i < 32;++i) ; 
   
-  	//条件为：读到的当前比特=0，指针未越界，最多只能读32比特  
-    while( bs_read1( s ) == 0 && s->p < s->p_end && i < 32 )    
-    {  
-        i++;  
-    }  
     return( ( 1 << i) - 1 + bs_read( s, i ) );      
 }  
 
@@ -189,7 +136,7 @@ int bs_read_ue( bs_t *s )
 	buf为nalu的数据，不包括头
 	len也不包括头 
 */
-int  getFrameType(unsigned char * buf,unsigned int  len) 
+unsigned char  getFrameType(unsigned char * buf,unsigned int  len) 
 {
 	bs_t s;
 	int frame_type = 0; 
@@ -200,54 +147,58 @@ int  getFrameType(unsigned char * buf,unsigned int  len)
     bs_read_ue( &s );  
     /* picture type */  
     frame_type =  bs_read_ue( &s );
-	return   frame_type;
-//	switch(frame_type){
-//		
-//		case 0: case 5: /* P */  
-//            result = FRAME_P;  
+//	return   frame_type;
+	switch(frame_type){
+		
+		case 0: case 5: /* P */  
+            result = FRAME_P;  
 //            printf("P帧 ");
-//            break;  
-//        case 1: case 6: /* B */  
-//            result = FRAME_B; 
-//			printf("B帧 "); 
-//            break;  
-//        case 3: case 8: /* SP */  
-//            result = FRAME_P;  
-//            printf("SP帧 ");
-//            break;  
-//        case 2: case 7: /* I */  
-//            result = FRAME_I;  
-//            printf("I帧 ");
-//            break;  
-//        case 4: case 9: /* SI */  
-//            result = FRAME_I;  
-//            printf("SI帧 ");
-//            break;  
-//	} 
-//	
-//	return  result;
+            break;  
+        case 1: case 6: /* B */  
+            result = FRAME_B; 
+			printf("B帧 "); 
+            break;  
+        case 3: case 8: /* SP */  
+            result = FRAME_P;  
+            printf("SP帧 ");
+            break;  
+        case 2: case 7: /* I */  
+            result = FRAME_I;  
+            printf("I帧 ");
+            break;  
+        case 4: case 9: /* SI */  
+            result = FRAME_I;  
+            printf("SI帧 ");
+            break;  
+	} 
+	
+	return  result;
 }
 
-uint32_t findBox(FILE* fp, uint32_t target)    //没考虑文件末尾 
+uint32_t findBox(FILE* fp, uint32_t target)    // 
 {
 	uint32_t boxSize, boxType;
 	uint32_t offset = 0x0;
 	uint8_t size[4],type[4];
+	int m,n;                //用于判断文件末尾 
 	
-	fread(size,1,4,fp);
-    fread(type,1,4,fp);
+	m=fread(size,1,4,fp);
+    n=fread(type,1,4,fp);
     boxSize = decodeUint32(size);
     boxType = decodeUint32(type);
     
-    while(boxType!=target){
+    while(boxType!=target&&m!=0&&n!=0){
     	offset += boxSize;
     	fseek(fp,boxSize-8,SEEK_CUR);
-    	fread(size,1,4,fp);
-    	fread(type,1,4,fp);
+    	m=fread(size,1,4,fp);
+    	n=fread(type,1,4,fp);
     	boxSize = decodeUint32(size);
     	boxType = decodeUint32(type);
 	}
 	offset += 0x00000008;
+	
+	if(m==0||n==0)
+		printf("error[1]"); 
 	return offset;
 }
 
@@ -260,9 +211,10 @@ uint32_t getParameter(FILE* fp)
 	uint32_t tempLength, tempOffset,offset; //记录mdat的offset 
 	uint32_t result; 
 	
+	
 	control = 0;
-	while(!control){     //找trak  没考虑文件末尾 
-		fread(size,1,4,fp);
+	fread(size,1,4,fp);
+	while(!control&&!feof(fp)){     //找trak  
     	fread(type,1,4,fp);
     	boxSize = decodeUint32(size);
     	boxType = decodeUint32(type);
@@ -314,6 +266,8 @@ uint32_t getParameter(FILE* fp)
 		else{
 			fseek(fp,boxSize-8,SEEK_CUR);
 		}
+		
+		fread(size,1,4,fp);
 	} 
 	
 }
@@ -323,34 +277,31 @@ uint32_t getParameter(FILE* fp)
 int main()
 {
 	FILE* fp;
-	FILE* stream;
 	uint32_t boxSize, boxType;
 	uint32_t offset = 0x0; //记录mdat的offset 
 	int control, naluLength,flag;
 	uint8_t size[4],type[4]; 
 	uint8_t* buf;
 	uint8_t slice_type=0;
+	int m,n; 
 	
 	if((fp=fopen("new.mp4","r+"))==NULL){
         printf("Can not open output file.\n");
         return 0;
     }
-    
-//    if((stream=fopen("result.txt","w+"))==NULL){
-//        printf("Can not open output file.\n");
-//        return 0;
-//    }
-    
+
     control = 0;
     flag =0;
-    while(control!= 1){   //找到moov的入口 
-    	fread(size,1,4,fp);
+    m=1,n=1;
+    
+    fread(size,1,4,fp);
+    while(control!= 1&&!feof(fp)){   //找到moov的入口 
     	fread(type,1,4,fp);
     	boxSize = decodeUint32(size);
     	boxType = decodeUint32(type);
     	if(boxType == moov){
     		control = 1;
-    		//跳到子函数，处理里面的box，取pps，sps，和构造table 
+    		//子函数，处理里面的box，取pps，sps，和构造table 
     		naluLength=(int)getParameter(fp);   //naluLength个字节表示长度 
 		}
 		else if(boxType == mdat){
@@ -361,6 +312,7 @@ int main()
 			fseek(fp,boxSize-8,SEEK_CUR);
 			offset += boxSize;
 		}
+		fread(size,1,4,fp);
 	}
 	
 	if(flag == 1){                        //处理mdat 
@@ -370,7 +322,6 @@ int main()
     	boxSize = decodeUint32(size);
     	boxType = decodeUint32(type);
     	if(boxType == mdat){
-    		
     		offset = boxSize-8;
     		while(offset!= 0x0)
     		{
@@ -382,29 +333,15 @@ int main()
 	    		if(boxType == NAL_SLICE || boxType == NAL_SLICE_IDR){
 	    			buf = (uint8_t*)malloc(sizeof(uint8_t)*(boxSize-1)); //nalu
 	    			fread(buf,1,boxSize-1,fp);
-	    			control = getFrameType(buf,boxSize-1);
-	    			switch(control){
-						case 0: case 5: /* P */  
-//							fwrite("P", size_t size, size_t count, FILE* stream);
-//				            printf("P帧 %X ",boxType);
-				            break;  
-				        case 1: case 6: /* B */  
-							printf("B帧 %X ",boxType); 
-				            break;  
-				        case 3: case 8: /* SP */  
-				            printf("SP帧 %X ",boxType);
-				            break;  
-				        case 2: case 7: /* I */   
-				            printf("I帧 %X ",boxType);
-				            break;  
-				        case 4: case 9: /* SI */    
-				            printf("SI帧 %X ",boxType);
-				            break;  
-					} 
+	    			getFrameType(buf,boxSize-1);
+				}
+				else if(boxType == NAL_SEI){
+					fseek(fp,boxSize-1,SEEK_CUR);
+					printf("SEI帧 ");	
 				}
 				else{
 					fseek(fp,boxSize-1,SEEK_CUR);
-					printf("其他 %X ",boxType);
+					printf("其他 ");
 				}
 				offset = offset - boxSize - naluLength;
 			}	
@@ -419,9 +356,10 @@ int main()
     	fread(type,1,4,fp);
     	boxSize = decodeUint32(size);
     	boxType = decodeUint32(type);
-    	while(boxType != mdat){
+		m=1;
+    	while(boxType != mdat&&m!=0){
     		fseek(fp,boxSize-8,SEEK_CUR);
-    		fread(size,1,4,fp);
+    		m= fread(size,1,4,fp);
     		fread(type,1,4,fp);
     		boxSize = decodeUint32(size);
     		boxType = decodeUint32(type);
@@ -439,24 +377,7 @@ int main()
 	    		if(boxType == NAL_SLICE || boxType == NAL_SLICE_IDR){
 	    			buf = (uint8_t*)malloc(sizeof(uint8_t)*(boxSize-1)); //nalu
 	    			fread(buf,1,boxSize-1,fp);
-	    			control = getFrameType(buf,boxSize-1);
-	    			switch(control){
-						case 0: case 5: /* P */  
-//				            printf("P帧 ");
-				            break;  
-				        case 1: case 6: /* B */  
-							printf("B帧 "); 
-				            break;  
-				        case 3: case 8: /* SP */  
-				            printf("SP帧 ");
-				            break;  
-				        case 2: case 7: /* I */   
-				            printf("I帧 ");
-				            break;  
-				        case 4: case 9: /* SI */    
-				            printf("SI帧 ");
-				            break;  
-					} 
+	    			getFrameType(buf,boxSize-1);
 				}
 				else if(boxType == NAL_SEI){
 					fseek(fp,boxSize-1,SEEK_CUR);
